@@ -1,0 +1,77 @@
+{
+  "job": "seoul-camping",
+  "total": 8,
+  "brand": "TRAVEL LOG",
+  "accent": "#F0803C",
+  "slides": [
+    {
+      "slide_id": "s01",
+      "layout": "cover",
+      "badge": "TRAVEL | CAMPING",
+      "title": "단풍 절정은 10월 말,\n자리는 지금 잡아야 합니다",
+      "grade_brightness": 0.82,
+      "grade_saturation": 0.96,
+      "grade_contrast": 1.06
+    },
+    {
+      "slide_id": "s02",
+      "layout": "photo_story",
+      "badge": "① 가평 · 자라섬 오토캠핑장",
+      "title": "서울에서 가장 만만한\n대형 오토캠핑장",
+      "body": "가평군시설관리공단이 운영합니다.\n일반 사이트 191면에 카라반 40대, 개인 카라반 100면까지\n규모가 커서 당일 다녀오기도 부담이 적습니다.\n예약은 jaraisland.or.kr."
+    },
+    {
+      "slide_id": "s03",
+      "layout": "photo_story",
+      "badge": "② 가평 · 유명산자연휴양림",
+      "title": "올해 경기권 단풍은\n여기부터 터집니다",
+      "body": "산림청이 낸 2026년 단풍 절정 예측에서\n유명산은 10월 31일로 찍혔습니다.\n국립휴양림이라 예약은 숲나들e에서 하고,\n야영장 이용자는 입장료와 주차료가 면제됩니다."
+    },
+    {
+      "slide_id": "s04",
+      "layout": "photo_story",
+      "badge": "③ 양평 · 중미산자연휴양림",
+      "title": "1년 정비를 마치고\n다시 문을 열었습니다",
+      "body": "시설을 손보느라 오래 닫혀 있다가 돌아온 곳입니다.\n계곡을 낀 숲이라 사람이 덜 몰리는 평일을 노리면\n조용한 가을 숲을 통째로 쓸 수 있습니다.\n예약은 숲나들e."
+    },
+    {
+      "slide_id": "s05",
+      "layout": "photo_story",
+      "badge": "④ 서울 · 난지캠핑장",
+      "title": "차 막힐 일 없이\n한강에서 자는 선택",
+      "body": "서울시 공공서비스예약으로만 받습니다.\n일반캠핑존 1박 15,000~20,000원.\n운영은 11월 22일까지라 10월이 사실상 마지막 성수기입니다.\n현장 예약과 현장 결제는 안 됩니다."
+    },
+    {
+      "slide_id": "s06",
+      "layout": "photo_story",
+      "badge": "⑤ 서울 · 노을캠핑장",
+      "title": "10월의 하늘공원은\n단풍이 아니라 억새입니다",
+      "body": "하늘공원 억새가 절정에 오르는 시기와 겹칩니다.\n예약은 인터파크 NOL에서만, 매주 월요일은 휴장.\nA·B구역 13,000원, C구역 10,000원 선이고\n장비 대여가 없어 전부 챙겨 가야 합니다."
+    },
+    {
+      "slide_id": "s07",
+      "layout": "caution",
+      "badge": "예약 전쟁 공략",
+      "title": "자리는 날짜가 아니라\n오픈 시각에 갈립니다",
+      "points": [
+        "국립휴양림은 숲나들e에서 매주 수요일 오전 9시 선착순",
+        "주말과 성수기는 선착순이 아니라 추첨제입니다",
+        "난지캠핑장은 매월 15일 오픈, 2시간 안에 결제해야 확정",
+        "국립공원 야영장은 추첨 뒤 잔여분이 선착순으로 풀립니다"
+      ]
+    },
+    {
+      "slide_id": "s08",
+      "layout": "outro",
+      "badge": "TRAVEL LOG",
+      "title": "놓치기 전에\n저장해두세요",
+      "body": "알아두면 바로 써먹는 것들만 골라 매주 올립니다.",
+      "grade_brightness": 0.74,
+      "grade_saturation": 0.95,
+      "grade_contrast": 1.08,
+      "button": "＋  팔로우",
+      "handle": "@travel.log"
+    }
+  ],
+  "handle_note": "s08의 handle 값을 본인 계정으로 바꾸세요"
+}

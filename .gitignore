@@ -1,0 +1,21 @@
+.env
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# 생성 결과물은 버전 관리하지 않는다 — 플랜만 있으면 다시 렌더할 수 있다
+output/*
+!output/.gitkeep
+jobs/
+*.jpg
+*.jpeg
+*.png
+!assets/**/*.png
+
+# 에이전트 로컬 상태 / 개인 환경
+.omc/
+AGENTS.md
+scripts/claude_usage.py
+scripts/claude_usage_filters.json
+*.egg-info/

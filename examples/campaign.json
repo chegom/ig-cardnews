@@ -1,0 +1,36 @@
+{
+  "slug": "ai-cardnews-automation",
+  "caption": "카드뉴스 제작부터 발행까지, 로컬 FLUX로 연결한 자동화 흐름입니다.",
+  "hashtags": ["카드뉴스", "콘텐츠자동화", "ComfyUI", "FLUX"],
+  "ai_generated": true,
+  "theme": {
+    "brand": "LOCAL CREATIVE LAB",
+    "accent": "#D7FF3F",
+    "text": "#FFFFFF",
+    "style_prompt": "bold editorial photography, deep cobalt and charcoal palette, lime accent lighting, tactile paper texture, dynamic but clean composition, one coherent campaign series"
+  },
+  "slides": [
+    {
+      "eyebrow": "AUTOMATION / 01",
+      "headline": "카드뉴스 제작,\n이제 한 번에",
+      "body": "기획부터 이미지 생성, 한글 조판, 실제 발행까지 하나의 파이프라인으로 연결합니다.",
+      "prompt": "an elegant creative workstation with floating translucent image frames, dramatic cobalt lighting, premium editorial campaign scene",
+      "alt_text": "카드뉴스 제작 자동화를 소개하는 표지"
+    },
+    {
+      "eyebrow": "LOCAL AI / 02",
+      "headline": "이미지는\n내 PC의 FLUX로",
+      "body": "ComfyUI와 FLUX.2 Klein이 각 장의 배경 이미지를 로컬에서 만듭니다.",
+      "prompt": "a compact high performance creative computer rendering luminous visual concepts, local AI studio, cinematic side light",
+      "alt_text": "로컬 PC에서 FLUX로 이미지를 생성하는 장면"
+    },
+    {
+      "eyebrow": "PUBLISH / 03",
+      "headline": "검수한 결과를\n캐러셀로 발행",
+      "body": "공개 URL 업로드와 Instagram API 게시까지 자동으로 이어집니다.",
+      "prompt": "a sequence of polished editorial cards flowing toward a minimal social media grid, tactile paper and glass, energetic motion",
+      "alt_text": "완성된 카드가 Instagram 캐러셀로 이어지는 모습"
+    }
+  ]
+}
+

@@ -1,0 +1,80 @@
+{
+  "scenes": {
+    "s01": {
+      "prompt": "Editorial photograph of a single dome tent glowing warm from inside at dusk in an autumn campsite, maple and oak trees in deep red and gold around it, a camp chair and a lantern outside, blue evening light settling over the clearing, cinematic palette of amber, rust and deep teal, soft film grain, shallow depth of field",
+      "seed": 51207,
+      "must_have": [
+        "불 켜진 텐트 1동",
+        "붉은 단풍",
+        "해질녘 푸른 하늘"
+      ]
+    },
+    "s02": {
+      "prompt": "Editorial wide photograph of a riverside autumn campground at golden hour, several tents pitched in neat rows on flat grass, a broad calm river behind them and low mountains beyond, poplar trees turning yellow along the bank, warm late light, cinematic palette of amber, ochre and soft blue, soft grain, shallow depth of field",
+      "seed": 18643,
+      "must_have": [
+        "강변",
+        "텐트 여러 동",
+        "노랗게 물든 나무"
+      ]
+    },
+    "s03": {
+      "prompt": "Editorial photograph of a wooden camping deck set among tall maples in peak autumn colour, a small tent pitched on the deck, fallen red leaves scattered across the planks, soft forest light filtering through the canopy, cinematic palette of crimson, amber and deep green, soft film grain, shallow depth of field",
+      "seed": 92375,
+      "must_have": [
+        "나무 데크",
+        "데크 위 텐트",
+        "절정의 붉은 단풍"
+      ]
+    },
+    "s04": {
+      "prompt": "Editorial photograph of a quiet forest valley campsite in early morning mist, one tent among tall trees just beginning to turn gold, a stream running past, cool blue light with warm highlights breaking through, serene secluded mood, cinematic palette of amber, sage and slate blue, soft grain, shallow depth of field",
+      "seed": 40918,
+      "must_have": [
+        "계곡 물",
+        "안개",
+        "텐트 1동",
+        "차분한 아침 빛"
+      ]
+    },
+    "s05": {
+      "prompt": "Editorial photograph of a riverside urban campground at dusk, tents on mown grass beside a wide river with a distant city skyline glowing on the far bank, autumn trees along the path, warm lamps and blue evening sky, cinematic palette of amber, violet and deep blue, soft grain, shallow depth of field",
+      "seed": 76204,
+      "must_have": [
+        "강",
+        "건너편 도시 불빛",
+        "텐트",
+        "해질녘"
+      ]
+    },
+    "s06": {
+      "prompt": "Editorial photograph of a vast field of silver pampas grass catching low golden sunset light on a hilltop park, the plumes glowing white and amber, a city horizon far below, a few people walking a path through the grass, cinematic palette of gold, cream and soft blue, backlit, soft film grain, shallow depth of field",
+      "seed": 33581,
+      "must_have": [
+        "억새밭",
+        "역광으로 빛나는 이삭",
+        "낮은 황금빛 석양"
+      ]
+    },
+    "s07": {
+      "prompt": "Editorial overhead photograph of camping gear laid out neatly on a wooden floor before a trip: a rolled sleeping bag, a folded tent, a lantern, a thermos and a phone face down, soft daylight from one side, clean minimal flat lay, palette of amber, olive and warm grey, shallow depth of field, soft grain, all gear plain and unbranded",
+      "seed": 64730,
+      "must_have": [
+        "침낭",
+        "접힌 텐트",
+        "랜턴",
+        "정돈된 플랫레이"
+      ]
+    },
+    "s08": {
+      "prompt": "Editorial close-up photograph of a small campfire burning in a steel fire pit at night, embers glowing orange, a dark autumn forest blurred behind, two camp chairs just visible at the edge of the light, cosy intimate mood, cinematic palette of deep amber, ember orange and near black, soft film grain, shallow depth of field",
+      "seed": 87162,
+      "must_have": [
+        "모닥불 불꽃",
+        "화로대",
+        "어두운 배경",
+        "캠핑 의자"
+      ]
+    }
+  }
+}

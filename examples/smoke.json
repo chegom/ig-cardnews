@@ -1,0 +1,20 @@
+{
+  "slug": "flux-smoke-test",
+  "caption": "Local FLUX pipeline smoke test",
+  "ai_generated": true,
+  "theme": {
+    "brand": "LOCAL CREATIVE LAB",
+    "accent": "#D7FF3F",
+    "text": "#FFFFFF",
+    "style_prompt": "premium editorial campaign photography, deep cobalt and charcoal palette, lime rim light, tactile paper texture, clean art direction"
+  },
+  "slides": [
+    {
+      "eyebrow": "LOCAL FLUX / TEST",
+      "headline": "로컬 FLUX\n연결 완료",
+      "body": "ComfyUI가 만든 배경 위에 승인된 한글 문구를 정확하게 합성합니다.",
+      "prompt": "an elegant creative workstation with a sculptural translucent frame, cinematic cobalt lighting, generous calm negative space",
+      "alt_text": "로컬 FLUX와 ComfyUI 연동 확인 카드"
+    }
+  ]
+}
