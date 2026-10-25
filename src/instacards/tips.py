@@ -17,6 +17,7 @@ from PIL import Image, ImageDraw, ImageFont
 from instacards import layout_record as rec
 from instacards.cover import (
     MARGIN_X,
+    _top_scrim,
     _badge,
     _draw_tracked,
     _brand,
@@ -127,8 +128,10 @@ def _fit_title(draw: ImageDraw.ImageDraw, lines: list[str], width: int, start: i
 
 
 def _furniture(canvas: Image.Image, spec: dict[str, Any], index: int, total: int, brand: str) -> ImageDraw.ImageDraw:
-    # The scrim/gradient is already in place; snapshot the backdrop before any
-    # furniture or copy glyphs land so the audit measures the real background.
+    # Every scrim must be down before the snapshot, or the audit measures a
+    # backdrop the viewer never sees.
+    if brand:
+        _top_scrim(canvas, tint=SCRIM_TINT)
     rec.set_background(canvas)
     draw = ImageDraw.Draw(canvas)
     if brand:
