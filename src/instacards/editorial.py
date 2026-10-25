@@ -14,9 +14,12 @@ from typing import Any
 
 from PIL import Image, ImageDraw, ImageEnhance, ImageFilter, ImageFont, ImageOps
 
+from instacards import layout_record as rec
+
 
 CANVAS = (1080, 1350)
 W, H = CANVAS
+SAFE_AREA = (50, 40, W - 50, H - 40)
 FONT_ROOT = Path(__file__).resolve().parents[2] / "assets" / "fonts"
 BOLD_FONT = FONT_ROOT / "Pretendard-Bold.otf"
 REGULAR_FONT = FONT_ROOT / "Pretendard-Regular.otf"
@@ -84,10 +87,19 @@ def _draw_lines(
     gap: int,
 ) -> int:
     x, y = xy
+    start_y = y
+    right = x
     for line in lines:
         draw.text((x, y), line, font=font, fill=fill)
         bbox = draw.textbbox((x, y), line or "가", font=font)
+        right = max(right, bbox[2])
         y = bbox[3] + gap
+    # Every substantive copy block (title, body, bullet, checklist row) flows
+    # through here, so this is where the audit records editorial text.  The card
+    # behind it is snapshotted by each layout before the first block is drawn.
+    filled = sum(1 for line in lines if line.strip())
+    if filled:
+        rec.record("text", (x, start_y, right, max(start_y + 1, y - gap)), fill, font.size, lines=filled)
     return y
 
 
@@ -210,6 +222,7 @@ def _cover(source: Image.Image, spec: dict[str, Any], index: int, total: int) ->
     draw = ImageDraw.Draw(canvas)
     _header(draw, index, total, dark=True)
     draw.rounded_rectangle((66, 548, W - 66, H - 68), radius=44, fill=PAPER)
+    rec.set_background(canvas)
     y = _kicker(draw, spec.get("kicker", "겨울 생활 가이드"), 112, 612, ORANGE)
     font, lines = _fit_text(draw, spec["title"], 832, 3, 94, 64)
     y = _draw_lines(draw, (112, y + 18), lines, font, INK, 10)
@@ -227,6 +240,7 @@ def _split(source: Image.Image, spec: dict[str, Any], index: int, total: int) ->
     canvas = Image.new("RGBA", CANVAS, INK)
     canvas = Image.alpha_composite(canvas, _rounded_photo(source, (554, 112, 1012, 1238), 40))
     draw = ImageDraw.Draw(canvas)
+    rec.set_background(canvas)
     _header(draw, index, total, dark=True)
     y = _kicker(draw, spec.get("kicker", "핵심"), 72, 145, ORANGE)
     font, lines = _fit_text(draw, spec["title"], 420, 5, 72, 52)
@@ -247,6 +261,7 @@ def _photo_memo(source: Image.Image, spec: dict[str, Any], index: int, total: in
     _header(draw, index, total, dark=True)
     draw.rounded_rectangle((64, 210, 798, 1194), radius=42, fill=(244, 240, 232, 244))
     draw.rectangle((98, 210, 160, 224), fill=ORANGE)
+    rec.set_background(canvas)
     y = _kicker(draw, spec.get("kicker", "집 안"), 112, 266, BLUE)
     font, lines = _fit_text(draw, spec["title"], 620, 4, 76, 54)
     y = _draw_lines(draw, (112, y + 22), lines, font, INK, 10)
@@ -262,6 +277,7 @@ def _steps(source: Image.Image, spec: dict[str, Any], index: int, total: int) ->
     canvas = Image.new("RGBA", CANVAS, PAPER)
     canvas = Image.alpha_composite(canvas, _rounded_photo(source, (72, 430, 1008, 800), 38))
     draw = ImageDraw.Draw(canvas)
+    rec.set_background(canvas)
     _header(draw, index, total)
     y = _kicker(draw, spec.get("kicker", "미리 막기"), 72, 130, BLUE)
     font, lines = _fit_text(draw, spec["title"], 900, 2, 78, 58)
@@ -278,6 +294,7 @@ def _alert(source: Image.Image, spec: dict[str, Any], index: int, total: int) ->
     draw = ImageDraw.Draw(canvas)
     _header(draw, index, total, dark=True)
     draw.rounded_rectangle((72, 506, 1008, 1240), radius=42, fill=INK)
+    rec.set_background(canvas)
     y = _kicker(draw, spec.get("kicker", "위험 신호"), 112, 558, ORANGE)
     font, lines = _fit_text(draw, spec["title"], 840, 3, 76, 54)
     y = _draw_lines(draw, (112, y + 16), lines, font, WHITE, 9)
@@ -293,6 +310,7 @@ def _checklist(source: Image.Image, spec: dict[str, Any], index: int, total: int
     canvas = Image.new("RGBA", CANVAS, ICE)
     canvas = Image.alpha_composite(canvas, _rounded_photo(source, (636, 100, 1012, 460), 188))
     draw = ImageDraw.Draw(canvas)
+    rec.set_background(canvas)
     _header(draw, index, total)
     y = _kicker(draw, spec.get("kicker", "오늘 바로"), 72, 145, ORANGE)
     font, lines = _fit_text(draw, spec["title"], 520, 4, 78, 56)
@@ -300,6 +318,7 @@ def _checklist(source: Image.Image, spec: dict[str, Any], index: int, total: int
     items = spec.get("bullets", [])
     list_top = max(490, y + 35)
     draw.rounded_rectangle((72, list_top, 1008, 1194), radius=40, fill=PAPER)
+    rec.set_background(canvas)  # items sit on the inner paper card, not the ICE base
     bullet_font = _font(BOLD_FONT, 35)
     row_y = list_top + 56
     for item in items:
@@ -327,10 +346,24 @@ def compose_editorial_slide(
     layout = spec.get("layout", "split")
     if layout not in LAYOUTS:
         raise ValueError(f"unknown editorial layout: {layout}")
-    with Image.open(source) as opened:
-        image = LAYOUTS[layout](opened.copy(), spec, index, total)
+    rec.start()
+    try:
+        with Image.open(source) as opened:
+            image = LAYOUTS[layout](opened.copy(), spec, index, total)
+        elements = rec.finish()
+    finally:
+        if rec.active():
+            rec.finish()
     output.parent.mkdir(parents=True, exist_ok=True)
     image.convert("RGB").save(output, "JPEG", quality=95, optimize=True, progressive=True)
+    output.with_suffix(".layout.json").write_text(
+        json.dumps(
+            {"slide": index, "canvas": list(CANVAS), "safe_area": list(SAFE_AREA), "card": str(output.resolve()), "elements": elements},
+            ensure_ascii=False,
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
 
 
 def compose_editorial_carousel(spec_path: Path, backgrounds: Path, output: Path) -> None:
