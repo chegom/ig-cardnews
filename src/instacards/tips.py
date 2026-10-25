@@ -16,12 +16,7 @@ from PIL import Image, ImageDraw, ImageFont
 
 from instacards import layout_record as rec
 from instacards.cover import (
-    BRAND_SIZE,
-    BRAND_TOP,
-    BRAND_TRACKING,
     MARGIN_X,
-    PAGE_SIZE,
-    PAGE_TOP,
     _badge,
     _draw_tracked,
     _brand,
@@ -30,7 +25,8 @@ from instacards.cover import (
     _gradient,
     _page_pill,
     _photo,
-    _tracked_width,
+    _record_brand,
+    _record_page,
     _width,
     compose_cover,
 )
@@ -141,22 +137,6 @@ def _furniture(canvas: Image.Image, spec: dict[str, Any], index: int, total: int
     _page_pill(draw, index, total)
     _record_page(draw, index, total)
     return draw
-
-
-def _record_brand(draw: ImageDraw.ImageDraw, brand: str) -> None:
-    font = _font(BRAND_SIZE)
-    width = _tracked_width(draw, brand, font, BRAND_TRACKING)
-    x = (W - width) // 2
-    rec.record("brand", (x, BRAND_TOP, x + width, BRAND_TOP + _cap_height(font)), WHITE, BRAND_SIZE, text=brand)
-
-
-def _record_page(draw: ImageDraw.ImageDraw, index: int, total: int) -> None:
-    font = _font(PAGE_SIZE)
-    label = f"{index}/{total}"
-    width = _width(draw, label, font) + 46
-    x = W - 58 - width
-    # The page number sits on its own dark pill, not on the photo.
-    rec.record("page", (x, PAGE_TOP, x + width, PAGE_TOP + 58), WHITE, PAGE_SIZE, bg_rgb=(14, 16, 20), text=label)
 
 
 BOTTOM_MARGIN = 104
@@ -375,8 +355,10 @@ def _prompt(source: Image.Image, spec: dict[str, Any], index: int, total: int, b
         gap=PROMPT_GAP,
     )
     prompt_right = MARGIN_X + PROMPT_PAD_X + max((_width(draw, line, font) for line in lines), default=0)
-    # Prompt copy sits on the translucent dark panel, not on the photo.
-    rec.record("body", (MARGIN_X + PROMPT_PAD_X, prompt_top, prompt_right, prompt_end), WHITE, font.size,
+    # Prompt copy sits on the translucent dark panel, not on the photo, and a
+    # code/prompt block legitimately runs many lines -- so it is its own role,
+    # outside the prose body's density budget.
+    rec.record("prompt", (MARGIN_X + PROMPT_PAD_X, prompt_top, prompt_right, prompt_end), WHITE, font.size,
                lines=len(lines), bg_rgb=(14, 16, 21))
     if note_lines:
         _draw_block(draw, note_lines, x=MARGIN_X, y=y + box_height + 24, font=note_font, fill=_accent(spec), gap=14)
