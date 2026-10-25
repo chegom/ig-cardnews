@@ -179,14 +179,24 @@ def _veil(canvas: Image.Image, alpha: int) -> None:
     canvas.alpha_composite(Image.new("RGBA", CANVAS, SCRIM_TINT + (alpha,)))
 
 
-def _interior_top(block_height: int) -> int:
-    """Every interior page starts its text block on the same line.
+BASE_ANCHOR = H - 130   # 짧은 블록의 밑변이 앉는 기준선 (하단 여백 ~130px)
 
-    The start point is what the eye tracks when swiping, so it is fixed rather
-    than derived from the copy.  The floor is a hard limit, not a target: a
-    block is pulled up only when it would otherwise cross it.
+
+def _interior_top(block_height: int) -> int:
+    """Where an interior page's text block starts (its top y).
+
+    A full-height block clings to the fixed start line (``INTERIOR_TOP``), which
+    is what the eye tracks when swiping.  A *short* block, though, would leave
+    the bottom of the card empty if it also started at that line — so it is
+    bottom-anchored near ``BASE_ANCHOR`` and drops down the card instead.  The
+    floor is still a hard limit: a very tall block is pulled up to respect it.
+    Because the scrim starts a fixed lead above the block, dropping a short
+    block also narrows its gradient automatically.
     """
-    return min(INTERIOR_TOP, H - INTERIOR_FLOOR - block_height)
+    floor_top = H - INTERIOR_FLOOR - block_height
+    bottom_anchored = BASE_ANCHOR - block_height
+    fixed_line = min(INTERIOR_TOP, floor_top)
+    return min(max(bottom_anchored, fixed_line), floor_top)
 
 
 def _scrim(canvas: Image.Image, block_top: int, veil: int = 34, lead: int = 210) -> None:
@@ -268,6 +278,14 @@ def _points_height(draw: ImageDraw.ImageDraw, points: list[str], font, indent: i
     return max(0, height - POINT_GAP)
 
 
+def _photo_title_start(n_lines: int) -> int:
+    """Shorter headlines get a bigger starting size: a one-liner reads as small
+    at 84 on a full-bleed card, so it climbs toward the place-name scale while
+    denser multi-line titles keep the current size.  ``_fit_title`` still shrinks
+    to fit the width, so this only ever *raises* the ceiling."""
+    return {1: 118, 2: 96}.get(n_lines, 84)
+
+
 def _photo_story(source: Image.Image, spec: dict[str, Any], index: int, total: int, brand: str) -> Image.Image:
     canvas = _photo_canvas(source, spec)
     draw = ImageDraw.Draw(canvas)
@@ -279,7 +297,7 @@ def _photo_story(source: Image.Image, spec: dict[str, Any], index: int, total: i
     body_height = len(body_lines) * _cap_height(body_font) + max(0, len(body_lines) - 1) * 24
 
     lines = [line for line in spec["title"].splitlines() if line.strip()]
-    title_font = _fit_title(draw, lines, W - MARGIN_X * 2, 84, 54)
+    title_font = _fit_title(draw, lines, W - MARGIN_X * 2, _photo_title_start(len(lines)), 54)
     title_height = len(lines) * (_cap_height(title_font) + 14)
 
     head = _kicker_height() if spec.get("badge") else 0
