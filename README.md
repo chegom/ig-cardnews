@@ -14,6 +14,7 @@ copy.json ───────────────────────�
 
 - **배경 이미지 자동 생성** — gpt-image-2(기본) 또는 로컬 FLUX
 - **must_have 기반 QC** — 장면마다 들어가야 할 요소를 적어두고, 빠진 장만 다른 엔진으로 재생성
+- **비주얼 품질 감사 게이트** — 합성된 카드의 대비(WCAG)·안전영역 이탈·과밀·브랜드 위치를 실측해 빨강/노랑/초록으로 판정, 빨강이 하나라도 있으면 빌드 실패
 - **한글 타이포 합성** — 레이아웃 7종, 줄바꿈·자간·블록 위치를 코드가 계산
 - **화면 캡처 배경** — 제품 소개용으로 웹페이지 캡처를 잘라 카드 배경으로 매팅
 
@@ -116,6 +117,44 @@ python scripts/compose_tips_carousel.py \
 
 내지 텍스트 블록은 모두 같은 y에서 시작하고(`INTERIOR_TOP`), 하한선(`INTERIOR_FLOOR`)을
 넘으면 자동으로 당겨집니다. 카피 길이가 달라져도 넘길 때 글자 위치가 흔들리지 않습니다.
+
+## 비주얼 품질 감사 (audit)
+
+생성 모델에 한글을 맡기지 않아 오타는 없지만, **배경 위에 올린 글자가 묻히거나·삐져나가거나·너무
+빽빽하거나·장마다 로고 위치가 흔들리는** 비주얼 사고는 여전히 날 수 있습니다. 감사 게이트는
+합성이 끝난 카드를 실측해 이걸 잡아냅니다. (`instacards` CLI = `examples/campaign.json` 흐름)
+
+합성 시 카드마다 `cards/NN.layout.json`(각 글자요소의 역할·bbox·색·배경색)이 함께 떨어지고,
+감사기는 이 매니페스트와 렌더된 픽셀을 대조해 판정합니다.
+
+```bash
+# 렌더하면서 바로 감사 (빨강이 있으면 종료코드 1)
+instacards render examples/campaign.json --audit
+
+# 이미 렌더된 카드만 다시 감사
+instacards audit examples/campaign.json
+```
+
+| 검사 | 빨강 (실패) | 재료 |
+|---|---|---|
+| **대비(contrast)** | 글자색↔배경 WCAG 대비가 최소치 미만 (본문 4.5:1, 그 외 3.0:1) | 글자색 + 글자 아래 배경 실측 |
+| **오버플로(overflow)** | 글자 bbox가 안전영역(1080×1350 기준 좌우 92·상하 60px)을 벗어남 | bbox vs 안전영역 |
+| **과밀(density)** | 본문이 권장 줄 수(기본 5줄) 초과 | 본문 줄 수 |
+| **브랜드 위치(furniture)** | — (노랑) 장마다 로고·페이지 번호 세로 위치가 허용 편차 초과 | 장 간 bbox 비교 |
+
+판정은 빨강/노랑/초록이며, **빨강이 하나라도 있으면 게이트 실패(exit 1)** 입니다. 노랑은 경고로
+빌드를 막지 않습니다. 임계값은 `--rules audit_rules.json`으로 덮어쓸 수 있습니다
+(예시: [`examples/audit_rules.json`](examples/audit_rules.json)).
+
+```jsonc
+{
+  "min_contrast_body": 4.5,   // 본문 최소 대비
+  "min_contrast_large": 3.0,  // 제목·라벨 등 최소 대비
+  "body_lines_soft": 5,       // 이 줄 수 초과 시 노랑
+  "body_lines_hard": 6,       // 이 줄 수 초과 시 빨강
+  "furniture_tolerance": 14   // 장 간 furniture 세로 편차 허용(px)
+}
+```
 
 ## 폰트
 
