@@ -139,6 +139,38 @@ def _gradient(
     canvas.alpha_composite(overlay)
 
 
+TOP_SCRIM_ALPHA = 140   # 흰 하늘(≈250) 위에서도 흰 글자가 4.5:1을 넘기는 값
+TOP_SCRIM_FLAT = 96     # 워드마크·페이지 필이 앉는 구간은 일정하게 유지
+TOP_SCRIM_END = 240
+
+
+def _top_scrim(
+    canvas: Image.Image,
+    *,
+    max_alpha: int = TOP_SCRIM_ALPHA,
+    flat_y: int = TOP_SCRIM_FLAT,
+    end_y: int = TOP_SCRIM_END,
+    tint: tuple[int, int, int] = (0, 0, 0),
+) -> None:
+    """Darken the top edge so the wordmark stays legible over a bright sky.
+
+    The brand mark is white text with no plate of its own, so on a blown-out
+    sky it measured 1.4:1 — invisible.  The band is flat where the furniture
+    sits, then eases out so it reads as a vignette rather than a bar.
+    """
+    overlay = Image.new("RGBA", CANVAS, (0, 0, 0, 0))
+    draw = ImageDraw.Draw(overlay)
+    span = max(1, end_y - flat_y)
+    for y in range(end_y):
+        if y <= flat_y:
+            alpha = max_alpha
+        else:
+            t = (y - flat_y) / span
+            alpha = max_alpha * (1 - t) ** 1.5
+        draw.line((0, y, W, y), fill=tint + (int(alpha),))
+    canvas.alpha_composite(overlay)
+
+
 def _brand(draw: ImageDraw.ImageDraw, text: str, accent: tuple[int, int, int] | None = None) -> None:
     """Centred wordmark, optionally preceded by a small accent dot."""
     font = _font(BRAND_SIZE)
@@ -253,7 +285,10 @@ def compose_cover(
         max_alpha=spec.get("gradient_alpha", 206),
         tail_alpha=spec.get("gradient_tail", 248),
     )
-    # The gradient is down; snapshot the backdrop before any glyphs land.
+    # Every scrim must be down before the snapshot, or the audit measures a
+    # backdrop the viewer never sees.
+    if spec.get("brand"):
+        _top_scrim(canvas)
     rec.set_background(canvas)
     draw = ImageDraw.Draw(canvas)
 
