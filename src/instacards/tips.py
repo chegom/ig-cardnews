@@ -14,8 +14,14 @@ from typing import Any
 
 from PIL import Image, ImageDraw, ImageFont
 
+from instacards import layout_record as rec
 from instacards.cover import (
+    BRAND_SIZE,
+    BRAND_TOP,
+    BRAND_TRACKING,
     MARGIN_X,
+    PAGE_SIZE,
+    PAGE_TOP,
     _badge,
     _draw_tracked,
     _brand,
@@ -24,6 +30,7 @@ from instacards.cover import (
     _gradient,
     _page_pill,
     _photo,
+    _tracked_width,
     _width,
     compose_cover,
 )
@@ -124,11 +131,32 @@ def _fit_title(draw: ImageDraw.ImageDraw, lines: list[str], width: int, start: i
 
 
 def _furniture(canvas: Image.Image, spec: dict[str, Any], index: int, total: int, brand: str) -> ImageDraw.ImageDraw:
+    # The scrim/gradient is already in place; snapshot the backdrop before any
+    # furniture or copy glyphs land so the audit measures the real background.
+    rec.set_background(canvas)
     draw = ImageDraw.Draw(canvas)
     if brand:
         _brand(draw, brand)
+        _record_brand(draw, brand)
     _page_pill(draw, index, total)
+    _record_page(draw, index, total)
     return draw
+
+
+def _record_brand(draw: ImageDraw.ImageDraw, brand: str) -> None:
+    font = _font(BRAND_SIZE)
+    width = _tracked_width(draw, brand, font, BRAND_TRACKING)
+    x = (W - width) // 2
+    rec.record("brand", (x, BRAND_TOP, x + width, BRAND_TOP + _cap_height(font)), WHITE, BRAND_SIZE, text=brand)
+
+
+def _record_page(draw: ImageDraw.ImageDraw, index: int, total: int) -> None:
+    font = _font(PAGE_SIZE)
+    label = f"{index}/{total}"
+    width = _width(draw, label, font) + 46
+    x = W - 58 - width
+    # The page number sits on its own dark pill, not on the photo.
+    rec.record("page", (x, PAGE_TOP, x + width, PAGE_TOP + 58), WHITE, PAGE_SIZE, bg_rgb=(14, 16, 20), text=label)
 
 
 BOTTOM_MARGIN = 104
@@ -205,13 +233,24 @@ def _head_height(draw: ImageDraw.ImageDraw, spec: dict[str, Any]) -> int:
 def _card_head(draw: ImageDraw.ImageDraw, spec: dict[str, Any], y: int) -> int:
     """Badge + title at the top of a dark card.  Returns the next free y."""
     if spec.get("badge"):
+        k_font = _font(KICKER_SIZE)
+        rec.record(
+            "kicker",
+            (MARGIN_X, y, MARGIN_X + _width(draw, spec["badge"], k_font), y + _cap_height(k_font)),
+            _accent(spec),
+            KICKER_SIZE,
+            text=spec["badge"],
+        )
         y = _kicker(draw, spec["badge"], x=MARGIN_X, y=y, fill=_accent(spec))
     lines = [line for line in spec["title"].splitlines() if line.strip()]
     font = _fit_title(draw, lines, W - MARGIN_X * 2, 82, 54)
     height = _cap_height(font)
+    title_top = y
+    title_right = MARGIN_X + max((_width(draw, line, font) for line in lines), default=0)
     for line in lines:
         draw.text((MARGIN_X, y - font.getbbox("가")[1]), line, font=font, fill=WHITE)
         y += height + 14
+    rec.record("title", (MARGIN_X, title_top, title_right, y - 14), WHITE, font.size, text=" ".join(lines))
     return y
 
 
@@ -251,10 +290,20 @@ def _photo_story(source: Image.Image, spec: dict[str, Any], index: int, total: i
     draw = _furniture(canvas, spec, index, total, brand)
     y = block_top
     if spec.get("badge"):
+        k_font = _font(KICKER_SIZE)
+        rec.record("kicker", (MARGIN_X, y, MARGIN_X + _width(draw, spec["badge"], k_font), y + _cap_height(k_font)),
+                   _accent(spec), KICKER_SIZE, text=spec["badge"])
         y = _kicker(draw, spec["badge"], x=MARGIN_X, y=y, fill=_accent(spec))
+    title_top = y
+    title_right = MARGIN_X + max((_width(draw, line, title_font) for line in lines), default=0)
     y = _draw_block(draw, lines, x=MARGIN_X, y=y, font=title_font, fill=WHITE, gap=14)
+    rec.record("title", (MARGIN_X, title_top, title_right, y), WHITE, title_font.size, text=" ".join(lines))
     if body_lines:
-        _draw_block(draw, body_lines, x=MARGIN_X, y=y + TITLE_BODY_GAP, font=body_font, fill=PAPER_DIM, gap=24)
+        body_top = y + TITLE_BODY_GAP
+        body_right = MARGIN_X + max((_width(draw, line, body_font) for line in body_lines), default=0)
+        body_end = _draw_block(draw, body_lines, x=MARGIN_X, y=body_top, font=body_font, fill=PAPER_DIM, gap=24)
+        rec.record("body", (MARGIN_X, body_top, body_right, body_end), PAPER_DIM, body_font.size,
+                   lines=len(body_lines), text=body)
     return canvas
 
 
@@ -297,15 +346,20 @@ def _prompt(source: Image.Image, spec: dict[str, Any], index: int, total: int, b
 
     draw = ImageDraw.Draw(canvas)
     text_height = _block_height(lines, font, PROMPT_GAP) - PROMPT_GAP
-    _draw_block(
+    prompt_top = y + (box_height - text_height) // 2
+    prompt_end = _draw_block(
         draw,
         lines,
         x=MARGIN_X + PROMPT_PAD_X,
-        y=y + (box_height - text_height) // 2,
+        y=prompt_top,
         font=font,
         fill=WHITE,
         gap=PROMPT_GAP,
     )
+    prompt_right = MARGIN_X + PROMPT_PAD_X + max((_width(draw, line, font) for line in lines), default=0)
+    # Prompt copy sits on the translucent dark panel, not on the photo.
+    rec.record("body", (MARGIN_X + PROMPT_PAD_X, prompt_top, prompt_right, prompt_end), WHITE, font.size,
+               lines=len(lines), bg_rgb=(14, 16, 21))
     if note_lines:
         _draw_block(draw, note_lines, x=MARGIN_X, y=y + box_height + 24, font=note_font, fill=_accent(spec), gap=14)
     return canvas
@@ -323,11 +377,17 @@ def _points(source: Image.Image, spec: dict[str, Any], index: int, total: int, b
 
     draw = _furniture(canvas, spec, index, total, brand)
     y = _card_head(draw, spec, block_top) + 60
+    body_top = y
+    body_right = MARGIN_X + 92
+    total_lines = 0
     for number, point in enumerate(spec["points"], start=1):
         lines = _wrap(draw, point, font, W - MARGIN_X * 2 - 96)
+        total_lines += len(lines)
+        body_right = max(body_right, MARGIN_X + 92 + max((_width(draw, line, font) for line in lines), default=0))
         draw.ellipse((MARGIN_X + 4, y + 2, MARGIN_X + 44, y + 42), fill=_accent(spec))
         draw.text((MARGIN_X + 24, y + 22), str(number), font=num_font, fill=INK, anchor="mm")
         y = _draw_block(draw, lines, x=MARGIN_X + 92, y=y, font=font, fill=WHITE, gap=12) + POINT_GAP
+    rec.record("body", (MARGIN_X, body_top, body_right, y - POINT_GAP), WHITE, font.size, lines=total_lines)
     return canvas
 
 
@@ -342,10 +402,16 @@ def _caution(source: Image.Image, spec: dict[str, Any], index: int, total: int, 
 
     draw = _furniture(canvas, spec, index, total, brand)
     y = _card_head(draw, spec, block_top) + 60
+    body_top = y
+    body_right = MARGIN_X + 68
+    total_lines = 0
     for point in spec["points"]:
         lines = _wrap(draw, point, font, W - MARGIN_X * 2 - 72)
+        total_lines += len(lines)
+        body_right = max(body_right, MARGIN_X + 68 + max((_width(draw, line, font) for line in lines), default=0))
         draw.rounded_rectangle((MARGIN_X + 6, y + 10, MARGIN_X + 26, y + 30), radius=6, fill=_accent(spec))
         y = _draw_block(draw, lines, x=MARGIN_X + 68, y=y, font=font, fill=WHITE, gap=12) + POINT_GAP
+    rec.record("body", (MARGIN_X, body_top, body_right, y - POINT_GAP), WHITE, font.size, lines=total_lines)
     return canvas
 
 
@@ -388,16 +454,24 @@ def _outro(source: Image.Image, spec: dict[str, Any], index: int, total: int, br
         w = sum(_width(draw, c, bf) for c in spec["badge"]) + 2 * (len(spec["badge"]) - 1) + 52
         _badge(draw, spec["badge"], x=(W - w) // 2, y=y - 44 - 56, fill=None)
 
+    title_top = y
+    title_w = max((_width(draw, line, font) for line in lines), default=0)
     for i, line in enumerate(lines):
         fill = accent if i == len(lines) - 1 and len(lines) > 1 else WHITE
         draw.text(((W - _width(draw, line, font)) // 2, y - top), line, font=font, fill=fill)
         y += line_h + 18
+    rec.record("title", ((W - title_w) // 2, title_top, (W + title_w) // 2, y - 18), WHITE, font.size,
+               text=" ".join(lines))
 
     if body_lines:
         y += 26
+        body_top = y
+        body_w = max((_width(draw, line, body_font) for line in body_lines), default=0)
         for line in body_lines:
             draw.text(((W - _width(draw, line, body_font)) // 2, y), line, font=body_font, fill=PAPER_DIM)
             y += _cap_height(body_font) + 14
+        rec.record("body", ((W - body_w) // 2, body_top, (W + body_w) // 2, y), PAPER_DIM, body_font.size,
+                   lines=len(body_lines), text=spec.get("body", ""))
 
     if button:
         y += 58
@@ -422,6 +496,7 @@ def _brandcard(source: Image.Image | None, spec: dict[str, Any], index: int, tot
     if source is not None:
         canvas = _photo_canvas(source, spec)
         _veil(canvas, spec.get("veil", 215))
+    rec.set_background(canvas)
     draw = ImageDraw.Draw(canvas)
     accent = _accent(spec)
 
@@ -445,9 +520,13 @@ def _brandcard(source: Image.Image | None, spec: dict[str, Any], index: int, tot
                   font=mark_font, tracking=8, fill=WHITE)
     y += _cap_height(mark_font) + 64
 
+    title_top = y
+    title_w = max((_width(draw, line, font) for line in lines), default=0)
     for line in lines:
         draw.text(((W - _width(draw, line, font)) // 2, y - top), line, font=font, fill=WHITE)
         y += line_h + 20
+    rec.record("title", ((W - title_w) // 2, title_top, (W + title_w) // 2, y - 20), WHITE, font.size,
+               text=" ".join(lines))
 
     if handle:
         y += 86
@@ -466,6 +545,24 @@ LAYOUTS = {
 PHOTO_LAYOUTS = {"photo_story", "prompt", "points", "caution", "outro"}
 
 
+# Text may sit anywhere from the brand line near the top edge to a block pulled
+# almost to the floor, so the safe area is generous; _fit_title already caps
+# headline width, so this mainly catches copy that escapes the canvas.
+SAFE_AREA = (50, 40, W - 50, H - 40)
+
+
+def _write_manifest(target: Path, index: int, elements: list[dict]) -> None:
+    manifest = target.with_suffix(".layout.json")
+    payload = {
+        "slide": index,
+        "canvas": list(CANVAS),
+        "safe_area": list(SAFE_AREA),
+        "card": str(target.resolve()),
+        "elements": elements,
+    }
+    manifest.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
 def compose_carousel(spec_path: Path, backgrounds: dict[str, Path], output: Path) -> list[Path]:
     payload = json.loads(spec_path.read_text(encoding="utf-8"))
     slides = payload["slides"]
@@ -481,29 +578,33 @@ def compose_carousel(spec_path: Path, backgrounds: dict[str, Path], output: Path
             spec = {**spec, "accent": accent}
         target = output / f"{index:02d}.jpg"
         layout = spec.get("layout")
-        if layout == "cover":
-            compose_cover(
-                source=backgrounds[spec["slide_id"]],
-                spec={**spec, "brand": brand},
-                index=index,
-                total=total,
-                output=target,
-            )
-            written.append(target)
-            continue
-        if layout not in LAYOUTS:
-            raise ValueError(f"unknown tips layout: {layout}")
-
-        source = None
-        if layout in PHOTO_LAYOUTS:
-            path = backgrounds.get(spec["slide_id"])
-            if path is None or not Path(path).is_file():
-                raise FileNotFoundError(f"{spec['slide_id']} needs a background photo")
-            with Image.open(path) as opened:
-                source = opened.copy()
-
-        image = LAYOUTS[layout](source, spec, index, total, brand)
-        target.parent.mkdir(parents=True, exist_ok=True)
-        image.convert("RGB").save(target, "JPEG", quality=96, subsampling=0, optimize=True, progressive=True)
+        rec.start()
+        try:
+            if layout == "cover":
+                compose_cover(
+                    source=backgrounds[spec["slide_id"]],
+                    spec={**spec, "brand": brand},
+                    index=index,
+                    total=total,
+                    output=target,
+                )
+            elif layout not in LAYOUTS:
+                raise ValueError(f"unknown tips layout: {layout}")
+            else:
+                source = None
+                if layout in PHOTO_LAYOUTS:
+                    path = backgrounds.get(spec["slide_id"])
+                    if path is None or not Path(path).is_file():
+                        raise FileNotFoundError(f"{spec['slide_id']} needs a background photo")
+                    with Image.open(path) as opened:
+                        source = opened.copy()
+                image = LAYOUTS[layout](source, spec, index, total, brand)
+                target.parent.mkdir(parents=True, exist_ok=True)
+                image.convert("RGB").save(target, "JPEG", quality=96, subsampling=0, optimize=True, progressive=True)
+            elements = rec.finish()
+        finally:
+            if rec.active():  # a raised error left the recorder open
+                rec.finish()
+        _write_manifest(target, index, elements)
         written.append(target)
     return written

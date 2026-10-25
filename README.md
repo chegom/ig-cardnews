@@ -133,7 +133,12 @@ instacards render examples/campaign.json --audit
 
 # 이미 렌더된 카드만 다시 감사
 instacards audit examples/campaign.json
+
+# 풀블리드 "AI tips" 캐러셀(scripts 경로)도 동일하게 감사
+python scripts/compose_tips_carousel.py <spec> <backgrounds> <out> --audit
 ```
+
+`tips.py`/`cover.py` 렌더러도 카드마다 `NN.layout.json`을 내보내 같은 감사기가 판정합니다.
 
 | 검사 | 빨강 (실패) | 재료 |
 |---|---|---|
