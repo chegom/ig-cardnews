@@ -30,8 +30,9 @@ description: >-
 - `src/instacards/composer.py` — `instacards` CLI 캐노니컬 경로(`campaign.json`).
 - `src/instacards/tips.py` + `cover.py` — 풀블리드 "AI tips" 캐러셀(`scripts/compose_tips_carousel.py`).
   글 길이별 가이드의 상수(`INTERIOR_TOP`, `KICKER_SIZE`, `TITLE_BODY_GAP`, 그라데이션 등)가 여기 있다.
-- `src/instacards/probe.py` — 풀블리드 프로브 합성기(감사 연결됨). `editorial.py` — 교육형(감사 미연결, 남은 작업).
-- **composer · tips/cover · probe** 가 카드별 `NN.layout.json`을 내보내고 같은 품질 감사(`src/instacards/audit.py`)가 판정한다.
+- `src/instacards/probe.py` — 풀블리드 프로브 합성기. `editorial.py` — 교육형 카드.
+- **네 렌더러 모두(composer · tips/cover · probe · editorial)** 카드별 `NN.layout.json`을 내보내고
+  같은 품질 감사(`src/instacards/audit.py`)가 판정한다.
   (레이아웃 요소 기록은 `src/instacards/layout_record.py` 공유 레코더로.)
 
 ## 품질 감사 게이트
