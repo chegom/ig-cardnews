@@ -4,8 +4,45 @@ from pathlib import Path
 import pytest
 from PIL import Image
 
+from instacards.audit import AuditRules, audit_directory
 from instacards.editorial import CANVAS
 from instacards.probe import compose_probe_carousel
+
+
+def _render_probe_deck(tmp_path: Path, color=(120, 110, 100)) -> Path:
+    backgrounds = tmp_path / "backgrounds"
+    backgrounds.mkdir()
+    for name in ("01.jpg", "02.jpg", "06.jpg"):
+        Image.new("RGB", CANVAS, color).save(backgrounds / name)
+    spec = tmp_path / "probe.json"
+    spec.write_text(json.dumps(_probe_payload(), ensure_ascii=False), encoding="utf-8")
+    output = tmp_path / "cards"
+    compose_probe_carousel(spec, backgrounds, output)
+    return output
+
+
+def test_probe_writes_layout_manifest_per_card(tmp_path: Path) -> None:
+    output = _render_probe_deck(tmp_path)
+
+    manifests = sorted(p.name for p in output.glob("*.layout.json"))
+    assert manifests == ["01.layout.json", "02.layout.json", "06.layout.json"]
+    first = json.loads((output / "01.layout.json").read_text(encoding="utf-8"))
+    assert first["canvas"] == list(CANVAS)
+    assert "title" in {e["role"] for e in first["elements"]}
+
+
+def test_probe_audit_passes_on_dark_gradient_deck(tmp_path: Path) -> None:
+    output = _render_probe_deck(tmp_path)
+
+    assert audit_directory(output).worst_level != "red"
+
+
+def test_probe_audit_flags_red_under_strict_contrast(tmp_path: Path) -> None:
+    output = _render_probe_deck(tmp_path)
+
+    report = audit_directory(output, AuditRules(min_contrast_large=25.0, min_contrast_body=25.0))
+
+    assert report.ok is False
 
 
 def _probe_payload() -> dict:

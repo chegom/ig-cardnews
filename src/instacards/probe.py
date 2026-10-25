@@ -13,12 +13,14 @@ from typing import Any
 
 from PIL import Image, ImageDraw, ImageEnhance, ImageFont, ImageOps
 
+from instacards import layout_record as rec
 from instacards.editorial import BOLD_FONT, CANVAS, REGULAR_FONT
 
 
 W, H = CANVAS
 PROBE_WHITE = (255, 255, 255)
 PROBE_PINK = (255, 55, 132)
+SAFE_AREA = (50, 40, W - 50, H - 40)
 
 
 def _font(path: Path, size: int) -> ImageFont.FreeTypeFont:
@@ -79,6 +81,14 @@ def _page_marker(draw: ImageDraw.ImageDraw, page: str) -> None:
     draw.rounded_rectangle((x, y, x + width, y + height), radius=27, fill=(13, 15, 19, 174))
     text_x = x + (width - _width(draw, page, font)) // 2
     draw.text((text_x, y + 10), page, font=font, fill=PROBE_WHITE)
+    # The page marker sits on its own dark pill, not on the photo.
+    rec.record("page", (x, y, x + width, y + height), PROBE_WHITE, 26, bg_rgb=(13, 15, 19), text=page)
+
+
+def _record_title(draw: ImageDraw.ImageDraw, lines: list[str], *, x: int, y: int, bottom: int, font, centered: bool) -> None:
+    maxw = max((_width(draw, line, font) for line in lines), default=0)
+    left = (W - maxw) // 2 if centered else x
+    rec.record("title", (left, y, left + maxw, bottom), PROBE_WHITE, font.size, text=" ".join(lines))
 
 
 def _draw_lines(
@@ -105,6 +115,7 @@ def _draw_lines(
 def _bottom_story(source: Image.Image, spec: dict[str, Any], page: str) -> Image.Image:
     canvas = _photo(source)
     _bottom_gradient(canvas, start_y=585, max_alpha=238)
+    rec.set_background(canvas)
     draw = ImageDraw.Draw(canvas)
     _page_marker(draw, page)
 
@@ -126,14 +137,19 @@ def _bottom_story(source: Image.Image, spec: dict[str, Any], page: str) -> Image
         fill=PROBE_WHITE,
         gap=14,
     )
+    _record_title(draw, lines, x=64, y=title_y, bottom=title_bottom, font=title_font, centered=False)
     if body:
-        draw.text((68, title_bottom + 10), body, font=_font(REGULAR_FONT, 34), fill=(240, 241, 244))
+        body_font = _font(REGULAR_FONT, 34)
+        draw.text((68, title_bottom + 10), body, font=body_font, fill=(240, 241, 244))
+        rec.record("body", (68, title_bottom + 10, 68 + _width(draw, body, body_font), title_bottom + 10 + _line_height(body_font)),
+                   (240, 241, 244), body_font.size, lines=1, text=body)
     return canvas
 
 
 def _center_alert(source: Image.Image, spec: dict[str, Any], page: str) -> Image.Image:
     canvas = _photo(source)
     _bottom_gradient(canvas, start_y=430, max_alpha=248)
+    rec.set_background(canvas)
     draw = ImageDraw.Draw(canvas)
     _page_marker(draw, page)
 
@@ -154,11 +170,14 @@ def _center_alert(source: Image.Image, spec: dict[str, Any], page: str) -> Image
         centered=True,
         accent_last=True,
     )
+    _record_title(draw, lines, x=0, y=title_y, bottom=title_bottom, font=title_font, centered=True)
     body = spec.get("body", "")
     if body:
         body_font = _font(BOLD_FONT, 34)
         body_x = (W - _width(draw, body, body_font)) // 2
         draw.text((body_x, title_bottom + 36), body, font=body_font, fill=(240, 241, 244))
+        rec.record("body", (body_x, title_bottom + 36, body_x + _width(draw, body, body_font), title_bottom + 36 + _line_height(body_font)),
+                   (240, 241, 244), body_font.size, lines=1, text=body)
     draw.text((W // 2, 1236), "옆으로 넘겨 행동 순서를 확인하세요", font=_font(REGULAR_FONT, 27), fill=(225, 227, 232), anchor="mm")
     return canvas
 
@@ -204,8 +223,14 @@ def compose_probe_slide(
     source_path = backgrounds / f"{number:02d}.jpg"
     if not source_path.is_file():
         raise FileNotFoundError(source_path)
-    with Image.open(source_path) as opened:
-        image = LAYOUT_RENDERERS[layout](opened.copy(), spec, page)
+    rec.start()
+    try:
+        with Image.open(source_path) as opened:
+            image = LAYOUT_RENDERERS[layout](opened.copy(), spec, page)
+        elements = rec.finish()
+    finally:
+        if rec.active():
+            rec.finish()
 
     output.parent.mkdir(parents=True, exist_ok=True)
     image.convert("RGB").save(
@@ -215,6 +240,15 @@ def compose_probe_slide(
         subsampling=0,
         optimize=True,
         progressive=True,
+    )
+    manifest = output.with_suffix(".layout.json")
+    manifest.write_text(
+        json.dumps(
+            {"slide": number, "canvas": list(CANVAS), "safe_area": list(SAFE_AREA), "card": str(output.resolve()), "elements": elements},
+            ensure_ascii=False,
+            indent=2,
+        ),
+        encoding="utf-8",
     )
 
 
