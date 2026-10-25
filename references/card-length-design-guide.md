@@ -80,9 +80,10 @@
    델타를 460 기준으로 계산할 것.
 3. 짧은 글(장소형)은 커버가 이미 104→70 / 그라데이션 830으로 목표에 근접. 손댈 곳은
    커버 자체가 아니라 **"짧은 글 → 커버 레이아웃 유도" + photo_story의 짧은 글 분기**다.
-4. 변경 후에는 비주얼 품질 감사(`instacards audit` 또는 `src/instacards/audit.py`)로
-   대비·오버플로·과밀을 회귀 확인. (단, audit은 현재 `composer.py` 경로에 연결돼 있음 — tips 경로
-   연동은 미구현.)
+4. 변경 후에는 비주얼 품질 감사로 대비·오버플로·과밀을 회귀 확인.
+   tips 경로는 `python scripts/compose_tips_carousel.py <spec> <bg> <out> --audit`,
+   composer 경로는 `instacards audit`. (두 렌더러 모두 카드별 `NN.layout.json`을 내보내고
+   같은 `src/instacards/audit.py`가 판정한다.)
 
 ## 공통 원칙
 

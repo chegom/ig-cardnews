@@ -27,9 +27,11 @@ description: >-
 
 ## 렌더러 지도 (편집 전 대상 확인)
 
-- `src/instacards/composer.py` — `instacards` CLI 캐노니컬 경로(`campaign.json`). 품질 감사가 여기에 연결됨.
+- `src/instacards/composer.py` — `instacards` CLI 캐노니컬 경로(`campaign.json`).
 - `src/instacards/tips.py` + `cover.py` — 풀블리드 "AI tips" 캐러셀(`scripts/compose_tips_carousel.py`).
   글 길이별 가이드의 상수(`INTERIOR_TOP`, `KICKER_SIZE`, `TITLE_BODY_GAP`, 그라데이션 등)가 여기 있다.
+- **두 렌더러 모두** 카드별 `NN.layout.json`을 내보내고 같은 품질 감사(`src/instacards/audit.py`)가 판정한다.
+  (레이아웃 요소 기록은 `src/instacards/layout_record.py` 공유 레코더로.)
 - `src/instacards/probe.py`, `editorial.py` — 대체 합성기.
 
 ## 품질 감사 게이트
@@ -38,8 +40,12 @@ description: >-
 빨강이 하나라도 있으면 실패(exit 1).
 
 ```bash
+# composer 경로 (instacards CLI, campaign.json)
 instacards render examples/campaign.json --audit   # 렌더 + 감사
 instacards audit  examples/campaign.json            # 이미 렌더된 카드만 감사
+
+# tips 캐러셀 경로 (scripts)
+python scripts/compose_tips_carousel.py <spec> <backgrounds> <out> --audit
 ```
 
 임계값은 `--rules audit_rules.json`으로 덮어쓴다(예: `examples/audit_rules.json`).

@@ -4,6 +4,7 @@ from pathlib import Path
 import pytest
 from PIL import Image
 
+from instacards.audit import AuditRules, audit_directory
 from instacards.editorial import CANVAS
 from instacards.tips import compose_carousel
 
@@ -37,6 +38,47 @@ def test_carousel_writes_one_card_per_slide(tmp_path: Path) -> None:
     for path in written:
         with Image.open(path) as image:
             assert image.size == CANVAS
+
+
+def test_carousel_writes_layout_manifest_per_card(tmp_path: Path) -> None:
+    spec = tmp_path / "copy.json"
+    spec.write_text(json.dumps(_payload(), ensure_ascii=False), encoding="utf-8")
+    photo = _background(tmp_path / "bg.jpg")
+    cards = tmp_path / "cards"
+
+    compose_carousel(spec, {f"s0{i}": photo for i in range(1, 5)}, cards)
+
+    manifests = sorted(p.name for p in cards.glob("*.layout.json"))
+    assert manifests == ["01.layout.json", "02.layout.json", "03.layout.json", "04.layout.json"]
+    first = json.loads((cards / "01.layout.json").read_text(encoding="utf-8"))
+    assert first["slide"] == 1
+    assert first["canvas"] == list(CANVAS)
+    roles = {element["role"] for element in first["elements"]}
+    assert "title" in roles
+
+
+def test_carousel_audit_passes_on_dark_scrimmed_deck(tmp_path: Path) -> None:
+    spec = tmp_path / "copy.json"
+    spec.write_text(json.dumps(_payload(), ensure_ascii=False), encoding="utf-8")
+    photo = _background(tmp_path / "bg.jpg")
+    cards = tmp_path / "cards"
+    compose_carousel(spec, {f"s0{i}": photo for i in range(1, 5)}, cards)
+
+    report = audit_directory(cards)
+
+    assert report.worst_level != "red"
+
+
+def test_carousel_audit_flags_red_under_strict_contrast(tmp_path: Path) -> None:
+    spec = tmp_path / "copy.json"
+    spec.write_text(json.dumps(_payload(), ensure_ascii=False), encoding="utf-8")
+    photo = _background(tmp_path / "bg.jpg")
+    cards = tmp_path / "cards"
+    compose_carousel(spec, {f"s0{i}": photo for i in range(1, 5)}, cards)
+
+    report = audit_directory(cards, AuditRules(min_contrast_large=25.0, min_contrast_body=25.0))
+
+    assert report.ok is False
 
 
 def test_photo_layout_requires_a_background(tmp_path: Path) -> None:

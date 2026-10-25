@@ -13,6 +13,7 @@ from typing import Any
 
 from PIL import Image, ImageDraw, ImageEnhance, ImageFont, ImageOps
 
+from instacards import layout_record as rec
 from instacards.editorial import BOLD_FONT, CANVAS
 
 
@@ -199,6 +200,21 @@ def _badge(
     return width
 
 
+def _record_brand(draw: ImageDraw.ImageDraw, brand: str) -> None:
+    font = _font(BRAND_SIZE)
+    width = _tracked_width(draw, brand, font, BRAND_TRACKING)
+    x = (W - width) // 2
+    rec.record("brand", (x, BRAND_TOP, x + width, BRAND_TOP + _cap_height(font)), WHITE, BRAND_SIZE, text=brand)
+
+
+def _record_page(draw: ImageDraw.ImageDraw, index: int, total: int) -> None:
+    font = _font(PAGE_SIZE)
+    label = f"{index}/{total}"
+    width = _width(draw, label, font) + 46
+    x = W - 58 - width
+    rec.record("page", (x, PAGE_TOP, x + width, PAGE_TOP + 58), WHITE, PAGE_SIZE, bg_rgb=(14, 16, 20), text=label)
+
+
 def _fit_headline(draw: ImageDraw.ImageDraw, lines: list[str], width: int) -> ImageFont.FreeTypeFont:
     for size in range(COVER_MAX, COVER_MIN - 1, -2):
         font = _font(size)
@@ -237,11 +253,15 @@ def compose_cover(
         max_alpha=spec.get("gradient_alpha", 206),
         tail_alpha=spec.get("gradient_tail", 248),
     )
+    # The gradient is down; snapshot the backdrop before any glyphs land.
+    rec.set_background(canvas)
     draw = ImageDraw.Draw(canvas)
 
     if spec.get("brand"):
         _brand(draw, spec["brand"])
+        _record_brand(draw, spec["brand"])
     _page_pill(draw, index, total)
+    _record_page(draw, index, total)
 
     font = _fit_headline(draw, lines, COVER_FIT_WIDTH)
     inks = [draw.textbbox((0, 0), line, font=font) for line in lines]
@@ -252,18 +272,24 @@ def compose_cover(
     origins = [last_origin - (len(lines) - 1 - i) * pitch for i in range(len(lines))]
 
     if spec.get("badge"):
-        _badge(
+        badge_y = origins[0] + inks[0][1] - COVER_BADGE_TO_TITLE - COVER_BADGE_HEIGHT
+        badge_w = _badge(
             draw,
             spec["badge"],
             x=COVER_MARGIN_X,
-            y=origins[0] + inks[0][1] - COVER_BADGE_TO_TITLE - COVER_BADGE_HEIGHT,
+            y=badge_y,
             height=COVER_BADGE_HEIGHT,
             pad_x=COVER_BADGE_PAD_X,
             fill=None,
         )
+        rec.record("kicker", (COVER_MARGIN_X, badge_y, COVER_MARGIN_X + badge_w, badge_y + COVER_BADGE_HEIGHT),
+                   WHITE, BADGE_SIZE, text=spec["badge"])
 
+    title_right = COVER_MARGIN_X + max((_width(draw, line, font) for line in lines), default=0)
     for line, origin in zip(lines, origins):
         draw.text((COVER_MARGIN_X, origin), line, font=font, fill=WHITE)
+    rec.record("title", (COVER_MARGIN_X, origins[0] + inks[0][1], title_right, origins[-1] + inks[-1][3]),
+               WHITE, font.size, text=" ".join(lines))
 
     output.parent.mkdir(parents=True, exist_ok=True)
     canvas.convert("RGB").save(
