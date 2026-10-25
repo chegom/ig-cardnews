@@ -117,6 +117,55 @@ def test_short_single_line_headline_gets_a_larger_title(tmp_path: Path) -> None:
     assert title["font_px"] >= 100
 
 
+def test_long_prompt_block_is_not_flagged_as_overcrowded_body(tmp_path: Path) -> None:
+    # A prompt/code block legitimately runs many lines; it must not inherit the
+    # prose body's line budget and get flagged red for density.
+    payload = {
+        "total": 1,
+        "brand": "LAB",
+        "slides": [{
+            "slide_id": "s01",
+            "layout": "prompt",
+            "title": "프롬프트",
+            "prompt": "1단계\n2단계\n3단계\n4단계\n5단계\n6단계\n7단계",
+            "body": "노트",
+        }],
+    }
+    spec = tmp_path / "copy.json"
+    spec.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
+    photo = _background(tmp_path / "bg.jpg")
+    cards = tmp_path / "cards"
+    compose_carousel(spec, {"s01": photo}, cards)
+
+    report = audit_directory(cards)
+
+    assert [f for f in report.findings if f.code == "density"] == []
+
+
+def test_too_many_points_is_flagged_red_density(tmp_path: Path) -> None:
+    # A points card that genuinely crams too many lines must surface red through
+    # the tips path with default rules.
+    payload = {
+        "total": 1,
+        "brand": "LAB",
+        "slides": [{
+            "slide_id": "s01",
+            "layout": "points",
+            "title": "너무 많은 항목",
+            "points": [f"항목 {n}" for n in range(1, 9)],
+        }],
+    }
+    spec = tmp_path / "copy.json"
+    spec.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
+    photo = _background(tmp_path / "bg.jpg")
+    cards = tmp_path / "cards"
+    compose_carousel(spec, {"s01": photo}, cards)
+
+    report = audit_directory(cards)
+
+    assert any(f.code == "density" and f.level == "red" for f in report.findings)
+
+
 def test_photo_layout_requires_a_background(tmp_path: Path) -> None:
     payload = _payload()
     spec = tmp_path / "copy.json"
