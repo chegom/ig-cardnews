@@ -1,0 +1,8 @@
+{
+  "min_contrast_body": 4.5,
+  "min_contrast_large": 3.0,
+  "contrast_yellow_band": 1.5,
+  "body_lines_soft": 5,
+  "body_lines_hard": 6,
+  "furniture_tolerance": 14
+}

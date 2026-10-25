@@ -10,6 +10,7 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
+from instacards.audit import audit_directory, load_rules
 from instacards.campaign import Campaign, load_campaign
 from instacards.composer import compose_slide, make_draft_background
 from instacards.flux import FluxError, render_background
@@ -65,6 +66,7 @@ def render(campaign: Campaign, *, root: Path, draft: bool, force: bool) -> list[
                 campaign=campaign,
                 index=index,
                 output=card,
+                manifest=card.with_suffix(".layout.json"),
             )
         outputs.append(card)
         print(f"[{index}/{len(campaign.slides)}] card ready: {card}", file=sys.stderr)
@@ -112,17 +114,45 @@ def cmd_doctor(_: argparse.Namespace) -> int:
     return 0 if checks["comfyui"]["ok"] and checks["fluxctl"]["ok"] else 1
 
 
+def _run_audit(campaign: Campaign, *, root: Path, draft: bool, rules_path: Path | None) -> dict:
+    cards_dir = _asset_dir(root, campaign, draft=draft) / "cards"
+    report = audit_directory(cards_dir, load_rules(rules_path))
+    print(report.to_text(), file=sys.stderr)
+    return report.to_dict()
+
+
+def cmd_audit(args: argparse.Namespace) -> int:
+    campaign = load_campaign(args.campaign)
+    payload = _run_audit(campaign, root=args.output_dir, draft=args.draft, rules_path=args.rules)
+    _emit({"campaign": campaign.slug, "audit": payload})
+    return int(payload["exit_code"])
+
+
 def cmd_render(args: argparse.Namespace) -> int:
     campaign = load_campaign(args.campaign)
     cards = render(campaign, root=args.output_dir, draft=args.draft, force=args.force)
-    _emit({"ok": True, "campaign": campaign.slug, "cards": [str(path) for path in cards]})
-    return 0
+    payload: dict[str, object] = {"ok": True, "campaign": campaign.slug, "cards": [str(path) for path in cards]}
+    exit_code = 0
+    if args.audit:
+        audit = _run_audit(campaign, root=args.output_dir, draft=args.draft, rules_path=args.rules)
+        payload["audit"] = audit
+        payload["ok"] = bool(audit["ok"])
+        exit_code = int(audit["exit_code"])
+    _emit(payload)
+    return exit_code
 
 
 def cmd_run(args: argparse.Namespace) -> int:
     campaign = load_campaign(args.campaign)
     cards = render(campaign, root=args.output_dir, draft=args.draft, force=args.force)
     payload: dict[str, object] = {"ok": True, "campaign": campaign.slug, "cards": [str(path) for path in cards], "published": False}
+    if args.audit:
+        audit = _run_audit(campaign, root=args.output_dir, draft=args.draft, rules_path=args.rules)
+        payload["audit"] = audit
+        payload["ok"] = bool(audit["ok"])
+        if not audit["ok"]:
+            _emit(payload)
+            return int(audit["exit_code"])
     if args.publish:
         if args.draft:
             raise ValueError("draft backgrounds cannot be published")
@@ -144,9 +174,18 @@ def build_parser() -> argparse.ArgumentParser:
         command.add_argument("--output-dir", type=Path, default=Path("output"))
         command.add_argument("--draft", action="store_true", help="use quick synthetic backgrounds instead of FLUX")
         command.add_argument("--force", action="store_true", help="regenerate existing assets")
+        command.add_argument("--audit", action="store_true", help="run the visual quality audit and fail on any red finding")
+        command.add_argument("--rules", type=Path, default=None, help="path to an audit_rules.json override")
     render_parser.set_defaults(handler=cmd_render)
     run_parser.add_argument("--publish", action="store_true", help="upload and publish the carousel to Instagram")
     run_parser.set_defaults(handler=cmd_run)
+
+    audit_parser = sub.add_parser("audit", help="grade already-rendered cards (contrast, overflow, density, furniture)")
+    audit_parser.add_argument("campaign", type=Path)
+    audit_parser.add_argument("--output-dir", type=Path, default=Path("output"))
+    audit_parser.add_argument("--draft", action="store_true", help="audit the draft asset directory")
+    audit_parser.add_argument("--rules", type=Path, default=None, help="path to an audit_rules.json override")
+    audit_parser.set_defaults(handler=cmd_audit)
     return parser
 
 
