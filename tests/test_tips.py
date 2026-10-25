@@ -6,7 +6,9 @@ from PIL import Image
 
 from instacards.audit import AuditRules, audit_directory
 from instacards.editorial import CANVAS
-from instacards.tips import compose_carousel
+from instacards.tips import INTERIOR_FLOOR, INTERIOR_TOP, _interior_top, compose_carousel
+
+_H = CANVAS[1]
 
 
 def _background(path: Path) -> Path:
@@ -79,6 +81,40 @@ def test_carousel_audit_flags_red_under_strict_contrast(tmp_path: Path) -> None:
     report = audit_directory(cards, AuditRules(min_contrast_large=25.0, min_contrast_body=25.0))
 
     assert report.ok is False
+
+
+def test_short_block_drops_toward_the_base() -> None:
+    # A short copy block should sit lower on the card (larger y) instead of
+    # clinging to the old fixed start line and leaving the bottom empty.
+    assert _interior_top(200) > INTERIOR_TOP
+
+
+def test_block_that_spans_to_the_floor_keeps_the_fixed_start() -> None:
+    span = (_H - INTERIOR_FLOOR) - INTERIOR_TOP
+    assert _interior_top(span) == INTERIOR_TOP
+
+
+def test_very_tall_block_is_pulled_up_to_respect_the_floor() -> None:
+    span = (_H - INTERIOR_FLOOR) - INTERIOR_TOP
+    tall = span + 80
+    assert _interior_top(tall) == _H - INTERIOR_FLOOR - tall
+
+
+def test_short_single_line_headline_gets_a_larger_title(tmp_path: Path) -> None:
+    payload = {
+        "total": 1,
+        "brand": "LAB",
+        "slides": [{"slide_id": "s01", "layout": "photo_story", "title": "성수 카페", "body": "짧은 한 줄."}],
+    }
+    spec = tmp_path / "copy.json"
+    spec.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
+    photo = _background(tmp_path / "bg.jpg")
+    cards = tmp_path / "cards"
+    compose_carousel(spec, {"s01": photo}, cards)
+
+    manifest = json.loads((cards / "01.layout.json").read_text(encoding="utf-8"))
+    title = next(e for e in manifest["elements"] if e["role"] == "title")
+    assert title["font_px"] >= 100
 
 
 def test_photo_layout_requires_a_background(tmp_path: Path) -> None:
